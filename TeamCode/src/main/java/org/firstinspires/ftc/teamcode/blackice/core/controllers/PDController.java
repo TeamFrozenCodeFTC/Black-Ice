@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.blackice.core;
+package org.firstinspires.ftc.teamcode.blackice.core.controllers;
 
 public class PDController {
     public double kP, kD;

@@ -1,7 +1,6 @@
 package org.firstinspires.ftc.teamcode.blackice.core;
 
 import org.firstinspires.ftc.teamcode.blackice.core.commands.Command;
-import org.firstinspires.ftc.teamcode.blackice.core.commands.PathFinishCondition;
 import org.firstinspires.ftc.teamcode.blackice.core.geometry.PathGeometry;
 import org.firstinspires.ftc.teamcode.blackice.core.geometry.PathPoint;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
@@ -106,8 +105,6 @@ public class FollowPathCommand extends Command {
         
         follower.telemetry.addData("holdPower",
                                    follower.computeHoldPower(pathGeometry.getEndPoint()));
-        follower.telemetry.addData("isWithinBraking",
-                                   finishCondition.isFinished(follower, endPose));
         follower.telemetry.addData("distanceToEnd", distanceToEnd);
         follower.telemetry.addData("position", position);
         follower.telemetry.addData("closestT", closest.tValue);

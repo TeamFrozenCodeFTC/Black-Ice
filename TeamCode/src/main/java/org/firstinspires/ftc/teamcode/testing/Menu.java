@@ -3,7 +3,6 @@ package org.firstinspires.ftc.teamcode.testing;
 import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.Haptics;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +11,9 @@ public class Menu {
     public interface OptionAction {
         void run();
     }
+    
+    private static final int CONFIRM = 50;
+    private static final int LIGHT_TICK = 20;
     
     public static class Option {
         private final String name;
@@ -80,7 +82,7 @@ public class Menu {
                 if (confirmed) {
                     getSelectedOption().exit();
                 }
-                gamepad.rumble(Haptics.CONFIRM);
+                gamepad.rumble(CONFIRM);
                 debounceTimer.reset();
             }
             return;
@@ -93,11 +95,11 @@ public class Menu {
         if (debounceTimer.milliseconds() > 300) {
             if (gamepad.dpad_down || -gamepad.left_stick_y < -0.2) {
                 selectedIndex = (selectedIndex + 1) % options.size();
-                gamepad.rumble(Haptics.LIGHT_TICK);
+                gamepad.rumble(LIGHT_TICK);
                 debounceTimer.reset();
             } else if (gamepad.dpad_up || -gamepad.left_stick_y > 0.2) {
                 selectedIndex = (selectedIndex - 1 + options.size()) % options.size();
-                gamepad.rumble(Haptics.LIGHT_TICK);
+                gamepad.rumble(LIGHT_TICK);
                 debounceTimer.reset();
             }
         }
@@ -108,7 +110,7 @@ public class Menu {
             }
             confirmed = true;
             confirmedIndex = selectedIndex;
-            gamepad.rumble(Haptics.CONFIRM);
+            gamepad.rumble(CONFIRM);
             debounceTimer.reset();
         }
     }

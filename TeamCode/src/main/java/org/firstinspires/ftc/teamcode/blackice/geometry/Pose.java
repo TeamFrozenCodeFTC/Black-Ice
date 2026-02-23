@@ -96,4 +96,12 @@ public class Pose {
                              heading == null ? null :
                                  Math.toDegrees(heading));
     }
+    
+    public double getX() {
+        return position.getX();
+    }
+    
+    public double getY() {
+        return position.getY();
+    }
 }

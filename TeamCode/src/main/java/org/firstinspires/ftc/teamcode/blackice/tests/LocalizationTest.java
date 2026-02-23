@@ -15,8 +15,6 @@ public class LocalizationTest extends OpMode {
     @Override
     public void init() {
         follower = FollowerConstants.createFollower(hardwareMap);
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance()
-            .getTelemetry());
         
         follower.setTelemetry(telemetry);
     }

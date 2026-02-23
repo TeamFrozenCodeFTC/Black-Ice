@@ -6,10 +6,10 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.blackice.core.Follower;
-import org.firstinspires.ftc.teamcode.blackice.core.MotionTolerance;
-import org.firstinspires.ftc.teamcode.blackice.core.PDController;
-import org.firstinspires.ftc.teamcode.blackice.core.PoseTolerance;
-import org.firstinspires.ftc.teamcode.blackice.core.PredictiveBrakingController;
+import org.firstinspires.ftc.teamcode.blackice.utils.MotionTolerance;
+import org.firstinspires.ftc.teamcode.blackice.core.controllers.PDController;
+import org.firstinspires.ftc.teamcode.blackice.utils.PoseTolerance;
+import org.firstinspires.ftc.teamcode.blackice.core.controllers.PredictiveBrakingController;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.DrivetrainConfig;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.mecanum.MecanumConfig;
 import org.firstinspires.ftc.teamcode.blackice.localizers.LocalizerConfig;

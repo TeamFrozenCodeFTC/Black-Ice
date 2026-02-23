@@ -31,7 +31,7 @@ public class Curve extends OpMode {
         // and make heading functions
         autoRoutine = follower.autoBuilder(startingPose)
             .curveTo(new Pose(24, 48, 0), new Pose(48, 0, 0))
-            .until((f, p) -> false)
+            .untilAllFinish(() -> false)
             .build();
     }
     

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.blackice.core;
+package org.firstinspires.ftc.teamcode.blackice.core.controllers;
 
 /**
  * A positional controller using proportional control plus a custom
@@ -109,25 +109,4 @@ public class PredictiveBrakingController {
         
         return kP * (error - predictedBrakingDisplacement);
     }
-//
-//    /**
-//     * Prevents the controller from applying too much power in the opposite direction of
-//     * the robot's momentum.
-//     * Alternating full forward (+1) and full reverse (-1) power caused the control hub to restart due to low voltage spikes.
-//     * This fixes it by capping the amount of voltage applied opposite to the
-//     * direction of motion to be very minimal. Even a tiny opposite voltage (e.g., -0.0001) locks the wheels like zero-power brake mode, using the motor’s own momentum for braking without consuming significant energy.
-//     */
-//    private double clampReversePower(double power, double directionOfMotion) {
-//        boolean isOpposingMotion = directionOfMotion * power < 0;
-//        if (!isOpposingMotion) {
-//            return power;
-//        }
-//        double clampedPower;
-//        if (power < 0) {
-//            clampedPower = Math.max(power, -maximumBrakingPower);
-//        } else {
-//            clampedPower = Math.min(power, maximumBrakingPower);
-//        }
-//        return clampedPower;
-//    }
 }

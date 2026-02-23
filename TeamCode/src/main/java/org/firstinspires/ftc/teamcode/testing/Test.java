@@ -31,6 +31,7 @@ public class Test extends OpMode {
     @Override
     public void init() {
         menu = new Menu(gamepad1);
+        
         Map<String, ServoImplEx> servos = getSortedHardware(hardwareMap, ServoImplEx.class);
         Map<String, DcMotorEx> motors = getSortedHardware(hardwareMap, DcMotorEx.class);
         

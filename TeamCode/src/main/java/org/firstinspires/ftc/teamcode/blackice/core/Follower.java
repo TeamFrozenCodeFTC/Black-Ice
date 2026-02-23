@@ -1,17 +1,24 @@
 package org.firstinspires.ftc.teamcode.blackice.core;
 
+import com.acmerobotics.dashboard.FtcDashboard;
+import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.blackice.core.commands.AutoBuilder;
+import org.firstinspires.ftc.teamcode.blackice.LoggingTelemetry;
+import org.firstinspires.ftc.teamcode.blackice.core.commands.builder.AutoBuilder;
+import org.firstinspires.ftc.teamcode.blackice.core.controllers.PDController;
+import org.firstinspires.ftc.teamcode.blackice.core.controllers.PredictiveBrakingController;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.Drivetrain;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.DrivetrainConfig;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
 import org.firstinspires.ftc.teamcode.blackice.localizers.Localizer;
 import org.firstinspires.ftc.teamcode.blackice.localizers.LocalizerConfig;
+import org.firstinspires.ftc.teamcode.blackice.utils.MotionTolerance;
+import org.firstinspires.ftc.teamcode.blackice.utils.PoseTolerance;
 
 import java.util.function.DoubleSupplier;
 
@@ -32,30 +39,34 @@ public class Follower {
     public final double estimatedPathTimeoutMultiplier = 1.3;
     public final double minimumPathTimeout = 0.3;
     
-    /** The authority of perpendicular correction along the path. Value of 1 will have
-     * same correction as tangential. Lowering may increase speed but will lower path
-     * accuracy. Lower for other drivetrains such as tank and swerve.*/
+    /**
+     * The authority of perpendicular correction along the path. Value of 1 will have same
+     * correction as tangential. Lowering may increase speed but will lower path accuracy.
+     * Lower for other drivetrains such as tank and swerve.
+     */
     public final double normalAuthority = 1.0;
-
+    
     public final Drivetrain drivetrain;
     public final Localizer localizer;
+    private final Config config = new Config();
     public Telemetry telemetry;
-    
     public PoseTolerance poseTolerance;
     public MotionTolerance motionTolerance;
-    
     boolean isBraking = false;
     Vector brakingVector;
-    private double deltaTime;
     double lastTime = System.nanoTime();
     DoubleSupplier voltageSupplier;
-
+    private double deltaTime;
+    private DriveState driveState = DriveState.MANUAL;
+    private Pose teleOpTarget = new Pose(0, 0, 0);
+    private Double lockedHeading = null;
+    private Vector lastVelocity = new Vector(0, 0);
+    private Vector acceleration = new Vector(0, 0);
+    
     public Follower(PDController headingController,
                     PredictiveBrakingController positionalController,
-                    DrivetrainConfig drivetrain,
-                    LocalizerConfig localizer,
-                    HardwareMap hardwareMap,
-                    PoseTolerance poseTolerance,
+                    DrivetrainConfig drivetrain, LocalizerConfig localizer,
+                    HardwareMap hardwareMap, PoseTolerance poseTolerance,
                     MotionTolerance motionTolerance) {
         this.headingController = headingController;
         this.positionalController = positionalController;
@@ -84,7 +95,9 @@ public class Follower {
     }
     
     public void setTelemetry(Telemetry telemetry) {
-        this.telemetry = telemetry;
+        this.telemetry = new LoggingTelemetry(
+            new MultipleTelemetry(FtcDashboard.getInstance().getTelemetry(), telemetry),
+            "BLACK-ICE");
     }
     
     public AutoBuilder autoBuilder(Pose startingPose) {
@@ -119,19 +132,20 @@ public class Follower {
         telemetry.addData("pose", getCurrentPose());
         telemetry.addData("deltaTime", getDeltaTime());
         telemetry.addData("velocity", getVelocity());
+        telemetry.addData("voltage", voltageSupplier.getAsDouble());
         telemetry.update();
     }
     
     public boolean isStoppedAt(Pose pose) {
-        return poseTolerance.atPose(pose, localizer.getPose())
-            && motionTolerance.isStopped(localizer.getVelocity(),
-                     localizer.getAngularVelocity());
+        return poseTolerance.atPose(pose, localizer.getPose()) &&
+            motionTolerance.isStopped(localizer.getVelocity(),
+                                      localizer.getAngularVelocity());
     }
     
     public boolean isWithinBraking(Pose pose) {
         return isWithinBraking(pose.getPosition());
     }
-
+    
     public boolean isWithinBraking(Vector position) {
         return computeHoldPower(position).dot(localizer.getVelocity().normalized()) < 1;
     }
@@ -143,7 +157,14 @@ public class Follower {
     public Pose getCurrentPose() {
         return localizer.getPose();
     }
-
+    
+    public void setCurrentPose(Pose pose) {
+        localizer.setCurrentPose(pose.getPosition().getX(), pose.getPosition().getY(),
+                                 pose.getHeading());
+        localizer.update(deltaTime);
+        teleOpTarget = pose;
+    }
+    
     /**
      * Instructs the drivetrain to follow a vector relative to the field.
      */
@@ -180,43 +201,41 @@ public class Follower {
      */
     public boolean holdPose(Pose pose, double maxPower) {
         Vector holdPower = computeHoldPower(pose.getPosition());
-
-//        double appliedVoltage = getVoltage() * maxPower;
-//        double power = 14 / appliedVoltage;
+        
+        //        double appliedVoltage = getVoltage() * maxPower;
+        //        double power = 14 / appliedVoltage;
         
         double powerMag = holdPower.computeMagnitude();
         if (powerMag > maxPower) {
             holdPower = holdPower.times(maxPower / powerMag);
         }
-
-        double turnPower = Math.min(maxPower,
-            computeHeadingCorrectionPower(pose.getHeading()));
-
+        
+        double turnPower =
+            Math.min(maxPower, computeHeadingCorrectionPower(pose.getHeading()));
+        
         followFieldVector(holdPower, turnPower);
         
         return powerMag < 1;
     }
     
     public Vector computeHoldPower(Vector position) {
-        Vector error =
-            position.minus(localizer.getPose().getPosition());
+        Vector error = position.minus(localizer.getPose().getPosition());
         
-        return error.map(localizer.getVelocity(),
-                         positionalController::computeOutput);
+        return error.map(localizer.getVelocity(), positionalController::computeOutput);
     }
     
     /**
      * Amount of power needed to brake to a stop from the current velocity.
      */
     public Vector computeBrakingPower() {
-        return new Vector(0,0)
-            .map(localizer.getVelocity(), positionalController::computeOutput);
+        return new Vector(0, 0).map(localizer.getVelocity(),
+                                    positionalController::computeOutput);
     }
-
+    
     public double computeHeadingCorrectionPower(double targetHeading) {
         double headingError =
             AngleUnit.RADIANS.normalize(targetHeading - localizer.getPose().getHeading());
-
+        
         return headingController.computeOutput(headingError, deltaTime);
     }
     
@@ -230,38 +249,25 @@ public class Follower {
     public void update() {
         deltaTime = calculateDeltaTime();
         localizer.update(deltaTime);
+        
+        Vector currentVelocity = localizer.getVelocity();
+        
+        if (deltaTime > 1e-6) {
+            acceleration = currentVelocity.minus(lastVelocity).times(1.0 / deltaTime);
+        }
+        
+        lastVelocity = currentVelocity;
+    }
+    
+    public Vector getAcceleration() {
+        return acceleration;
     }
     
     public void setCurrentHeading(double headingDegrees) {
         setCurrentPose(new Pose(localizer.getPose().getPosition().getX(),
-                                localizer.getPose().getPosition().getY(), headingDegrees));
+                                localizer.getPose().getPosition().getY(),
+                                headingDegrees));
     }
-    
-    public void setCurrentPose(Pose pose) {
-        localizer.setCurrentPose(pose.getPosition().getX(), pose.getPosition().getY(),
-                        pose.getHeading());
-        localizer.update(deltaTime);
-        teleOpTarget = pose;
-    }
-    
-    public enum DriveState {
-        MANUAL,
-        DECELERATING,
-        HOLDING
-    }
-    
-    public static class Config {
-        public double stopVelocityThreshold = 0.02;
-        public boolean holdPositionOnStop = true;
-        public boolean autoBrakeEnabled = true;
-        public boolean headingLockEnabled = true;
-    }
-    
-    private DriveState driveState = DriveState.MANUAL;
-    private final Config config = new Config();
-    
-    private Pose teleOpTarget = new Pose(0, 0, 0);
-    private Double lockedHeading = null;
     
     public void setLockedHeading(Double headingRad) {
         this.lockedHeading = headingRad;
@@ -297,7 +303,8 @@ public class Follower {
         }
         
         if (driveState == DriveState.DECELERATING) {
-            if (localizer.getVelocity().computeMagnitude() < config.stopVelocityThreshold) {
+            if (localizer.getVelocity().computeMagnitude() <
+                config.stopVelocityThreshold) {
                 teleOpTarget = localizer.getPose();
                 driveState = DriveState.HOLDING;
             }
@@ -311,19 +318,17 @@ public class Follower {
         }
         
         drivetrain.followVector(
-            localizer.toRobotRelativeVector(new Vector(forward, lateral)),
-            turn
-        );
+            localizer.toRobotRelativeVector(new Vector(forward, lateral)), turn);
     }
     
     private void driveDecelerating() {
-//        if (config.autoBrakeEnabled) {
-//            drivetrain.followVector(computeBrakingPower(),
-//                                    computeHeadingCorrectionPower(
-//                                        teleOpTarget.getHeading()));
-//        } else {
-//            drivetrain.zeroPower();
-//        }
+        //        if (config.autoBrakeEnabled) {
+        //            drivetrain.followVector(computeBrakingPower(),
+        //                                    computeHeadingCorrectionPower(
+        //                                        teleOpTarget.getHeading()));
+        //        } else {
+        //            drivetrain.zeroPower();
+        //        }
         drivetrain.zeroPower();
     }
     
@@ -337,5 +342,16 @@ public class Follower {
     
     public void robotCentricDrive(double forward, double lateral, double turn) {
         drivetrain.followVector(new Vector(forward, lateral), turn);
+    }
+    
+    public enum DriveState {
+        MANUAL, DECELERATING, HOLDING
+    }
+    
+    public static class Config {
+        public double stopVelocityThreshold = 0.02;
+        public boolean holdPositionOnStop = true;
+        public boolean autoBrakeEnabled = true;
+        public boolean headingLockEnabled = true;
     }
 }

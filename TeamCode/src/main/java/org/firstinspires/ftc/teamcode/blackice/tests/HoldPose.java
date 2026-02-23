@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.blackice.opmodes;
+package org.firstinspires.ftc.teamcode.blackice.tests;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -23,5 +23,7 @@ public class HoldPose extends OpMode {
         follower.update();
         
         follower.holdPose(startingPose);
+        
+        follower.log();
     }
 }

@@ -1,13 +1,11 @@
 package org.firstinspires.ftc.teamcode.blackice.core.commands;
 
-public abstract class Command {
-    public void start() {}
-    public void update() {}
-    public abstract boolean isFinished();
+public interface Command {
+    default void start() {}
+    default void update() {}
+    boolean isFinished();
     
-    
-    
-    public static Command singleAction(Runnable action) {
+    static Command singleAction(Runnable action) {
         return new Command() {
             @Override
             public void start() {
@@ -21,11 +19,11 @@ public abstract class Command {
         };
     }
     
-    public double now() {
+    default double now() {
         return System.nanoTime() * 1e-9;
     }
     
-    public Command untilAllFinish(Command other) {
+    default Command untilAllFinish(Command other) {
         Command self = this;
         
         return new Command() {
@@ -48,7 +46,7 @@ public abstract class Command {
         };
     }
     
-    public Command untilEitherFinishes(Command other) {
+    default Command untilEitherFinishes(Command other) {
         Command self = this;
         
         return new Command() {
@@ -72,7 +70,7 @@ public abstract class Command {
     }
     
     // Convenience for multiple commands
-    public Command parallel(Command... others) {
+    default Command parallel(Command... others) {
         Command result = this;
         for (Command other : others) {
             result = result.untilAllFinish(other);
@@ -80,7 +78,7 @@ public abstract class Command {
         return result;
     }
     
-    public static Command waitSeconds(double seconds) {
+    static Command waitSeconds(double seconds) {
         return new Command() {
             private double start;
             
@@ -96,7 +94,7 @@ public abstract class Command {
         };
     }
     
-    public Command withTimeout(double seconds) {
+    default Command withTimeout(double seconds) {
         return this.untilEitherFinishes(waitSeconds(seconds));
     }
 }

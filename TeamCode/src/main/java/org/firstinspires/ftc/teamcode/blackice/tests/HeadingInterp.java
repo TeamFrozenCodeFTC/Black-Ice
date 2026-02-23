@@ -23,14 +23,12 @@ public class HeadingInterp extends OpMode {
     @Override
     public void init() {
         follower = FollowerConstants.createFollower(hardwareMap);
-        telemetry =  new MultipleTelemetry(telemetry, FtcDashboard.getInstance()
-            .getTelemetry());
-        
+
         follower.setTelemetry(telemetry);
         
         autoRoutine = follower.autoBuilder(startingPose)
             .lineTo(targetPose)
-            .linearHeadingInterpolation()
+            .withLinearHeadingInterpolation()
             .stop()
             .build();
     }

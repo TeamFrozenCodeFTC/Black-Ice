@@ -1,8 +1,14 @@
 package org.firstinspires.ftc.teamcode.blackice.tuning;
 
+import android.annotation.SuppressLint;
+
+import androidx.annotation.NonNull;
+
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.blackice.FollowerConstants;
+import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
 
@@ -24,8 +30,52 @@ import java.util.List;
 public class PredictiveBrakingTuner extends OpMode {
     private static final double[] TEST_POWERS =
         {1, 1, 1, 0.9, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2};
-    private static final double BRAKING_POWER = -0.2;
     
+    private static double[] generateSpread(
+        int count,
+        double max,
+        double min,
+        double flatFraction // 0.0–1.0 portion that stays at max
+    ) {
+        double[] values = new double[count];
+        
+        int flatCount = (int) (count * flatFraction);
+        int rampCount = count - flatCount;
+        
+        for (int i = 0; i < count; i++) {
+            if (i < flatCount) {
+                values[i] = max;
+            } else {
+                double t = (double)(i - flatCount) / (rampCount - 1);
+                values[i] = max - t * (max - min);
+            }
+        }
+        
+        return values;
+    }
+    
+    private static double[] biasedGradient(
+        int count,
+        double max,
+        double min,
+        double bias // >1 = more high values (try 2–3)
+    ) {
+        if (count < 2) return new double[]{max};
+        
+        double[] values = new double[count];
+        
+        for (int i = 0; i < count; i++) {
+            double t = (double) i / (count - 1);
+            
+            // Ease-out curve (clusters near max)
+            double curved = 1 - Math.pow(t, bias);
+            
+            values[i] = min + curved * (max - min);
+        }
+        
+        return values;
+    }
+
     private static final int DRIVE_TIME_MS = 1000;
     private final ElapsedTime timer = new ElapsedTime();
     private final List<double[]> velocityToBrakingDistance = new ArrayList<>();
@@ -36,38 +86,52 @@ public class PredictiveBrakingTuner extends OpMode {
     private Vector startPosition;
     private double measuredVelocity;
     
+    private Follower follower;
+    
     @Override
     public void init() {
-        telemetryM = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        follower = FollowerConstants.createFollower(hardwareMap);
+        
+        follower.setTelemetry(telemetry);
     }
 
     @Override
     public void init_loop() {
-        telemetryM.debug(
+        follower.telemetry.addLine(
             "The robot will move forwards and backwards starting at max speed and " +
                 "slowing down.");
-        telemetryM.debug("Make sure you have enough room. Leave at least 4-5 feet.");
-        telemetryM.debug("After stopping, kFriction and kBraking will be displayed.");
-        telemetryM.debug("Make sure to turn the timer off.");
-        telemetryM.debug("Press B on game pad 1 to stop.");
-        telemetryM.update(telemetry);
+        follower.telemetry.addLine("Make sure you have enough room. Leave at least 4-5 feet.");
+        follower.telemetry.addLine("After stopping, kFriction and kBraking will be displayed.");
+        follower.telemetry.addLine("Make sure to turn the timer off.");
+        follower.telemetry.addLine("Press B on game pad 1 to stop.");
+        follower.telemetry.update();
         follower.update();
-        drawCurrent();
     }
     
     @Override
     public void start() {
         timer.reset();
         follower.update();
-        follower.startTeleOpDrive(true);
     }
     
+    public double getForwardVelocity() {
+        return follower.getVelocity().dot(new Vector(1, follower.getHeading()));
+    }
+    
+    public double getVelocityMagnitude() {
+        return follower.getVelocity().computeMagnitude();
+    }
+    
+    private static final Vector FORWARD = new Vector(1, 0);
+    
+    @SuppressLint("DefaultLocale")
     @Override
     public void loop() {
         follower.update();
         
         if (gamepad1.b) {
-            stopRobot();
+            follower.drivetrain.zeroPower();
+            follower.drivetrain.zeroPowerBrakeMode();
             requestOpModeStop();
             return;
         }
@@ -82,8 +146,7 @@ public class PredictiveBrakingTuner extends OpMode {
                 }
                 
                 double currentPower = TEST_POWERS[iteration];
-                follower.setMaxPower(currentPower);
-                follower.setTeleOpDrive(direction, 0, 0, true);
+                follower.drivetrain.followVector(FORWARD.times(currentPower * direction), 0); // heading correction?
                 
                 timer.reset();
                 state = State.WAIT_DRIVE_TIME;
@@ -92,15 +155,16 @@ public class PredictiveBrakingTuner extends OpMode {
             
             case WAIT_DRIVE_TIME: {
                 if (timer.milliseconds() >= DRIVE_TIME_MS) {
-                    measuredVelocity = follower.getVelocity().getMagnitude();
-                    startPosition = follower.getPose().getAsVector();
+                    measuredVelocity = getForwardVelocity();
+                    startPosition = follower.getPosition();
                     state = State.APPLY_BRAKE;
                 }
                 break;
             }
             
             case APPLY_BRAKE: {
-                follower.setTeleOpDrive(BRAKING_POWER * direction, 0, 0, true);
+                follower.drivetrain.followVector(
+                    FORWARD.times(-follower.positionalController.maximumBrakingPower * direction), 0); // or maybe field relative braking?
                 
                 timer.reset();
                 state = State.WAIT_BRAKE_TIME;
@@ -109,29 +173,32 @@ public class PredictiveBrakingTuner extends OpMode {
             
             case WAIT_BRAKE_TIME: {
                 double t = timer.milliseconds();
-                Pose currentPose = follower.getPose();
-                double currentVelocity = follower.getVelocity().getMagnitude();
+                Pose currentPose = follower.getCurrentPose();
+                double currentVelocity = getForwardVelocity();
+                double velocityMagnitude = getVelocityMagnitude();
+                double voltage = follower.getVoltage();
+                double appliedVoltage = voltage * TEST_POWERS[iteration];
                 
-                brakeData.add(new BrakeRecord(t, currentPose, currentVelocity));
+                brakeData.add(new BrakeRecord(t, currentPose, currentVelocity,
+                                              appliedVoltage, velocityMagnitude));
                 
-                if (follower.getVelocity().dot(new Vector(direction,
-                                                          follower.getHeading())) <= 0) {
+                if (currentVelocity <= 0) {
                     state = State.RECORD;
                 }
                 break;
             }
             
             case RECORD: {
-                Vector endPosition = follower.getPose().getAsVector();
-                double brakingDistance = endPosition.minus(startPosition).getMagnitude();
+                Vector endPosition = follower.getPosition();
+                double brakingDistance = endPosition.minus(startPosition).computeMagnitude();
                 
                 velocityToBrakingDistance.add(
                     new double[]{measuredVelocity, brakingDistance});
                 
-                telemetryM.debug("Test " + iteration,
+                follower.telemetry.addData("Test " + iteration,
                                  String.format("v=%.3f  d=%.3f", measuredVelocity,
                                                brakingDistance));
-                telemetryM.update(telemetry);
+                follower.telemetry.update();
                 
                 iteration++;
                 state = State.START_MOVE;
@@ -140,31 +207,78 @@ public class PredictiveBrakingTuner extends OpMode {
             }
             
             case DONE: {
-                stopRobot();
+                follower.drivetrain.zeroPower();
+                follower.drivetrain.zeroPowerBrakeMode();
                 
                 double[] coefficients = quadraticFit(velocityToBrakingDistance);
                 
-                telemetryM.debug("Tuning Complete");
-                telemetryM.debug("Braking Profile:");
-                telemetryM.debug("kQuadratic", coefficients[1]);
-                telemetryM.debug("kLinear", coefficients[0]);
-                telemetryM.update(telemetry);
-                telemetryM.debug("Tuning Complete");
-                telemetryM.debug("Braking Profile:");
-                telemetryM.debug("kQuadraticFriction", coefficients[1]);
-                telemetryM.debug("kLinearBraking", coefficients[0]);
+                follower.telemetry.addLine("Tuning Complete");
+                follower.telemetry.addLine("Braking Profile:");
+                follower.telemetry.addData("kQuadratic", coefficients[1]);
+                follower.telemetry.addData("kLinear", coefficients[0]);
+                follower.telemetry.update();
+                follower.telemetry.addLine("Tuning Complete");
+                follower.telemetry.addLine("Braking Profile:");
+                follower.telemetry.addData("kQuadraticFriction", coefficients[1]);
+                follower.telemetry.addData("kLinearBraking", coefficients[0]);
+                
                 for (BrakeRecord record : brakeData) {
-                    Pose p = record.pose;
-                    telemetryM.debug(
-                        String.format("t=%.0f ms, x=%.2f, y=%.2f, θ=%.2f, v=%.2f",
-                                      record.timeMs, p.getX(), p.getY(),
-                                      p.getHeading(),
-                                      record.velocity));
+                    follower.telemetry.addLine(record.toString());
                 }
-                telemetryM.update();
+                follower.telemetry.update();
                 break;
             }
         }
+    }
+
+    private double[] quadraticFit(List<double[]> velocityToBrakingDistance) {
+        // Least-squares fit for d = a*v^2 + b*v
+        double sumV = 0;
+        double sumV2 = 0;
+        double sumV3 = 0;
+        double sumV4 = 0;
+        
+        double sumD = 0;
+        double sumVD = 0;
+        double sumV2D = 0;
+        
+        int n = velocityToBrakingDistance.size();
+        if (n == 0) return new double[]{0, 0};
+        
+        for (double[] entry : velocityToBrakingDistance) {
+            double v = entry[0];
+            double d = entry[1];
+            
+            double v2 = v * v;
+            
+            sumV += v;
+            sumV2 += v2;
+            sumV3 += v2 * v;
+            sumV4 += v2 * v2;
+            
+            sumD += d;
+            sumVD += v * d;
+            sumV2D += v2 * d;
+        }
+        
+        // Solve normal equations:
+        // [ Σv^2   Σv^3 ] [ b ] = [ Σv*d  ]
+        // [ Σv^3   Σv^4 ] [ a ]   [ Σv^2*d ]
+        double A11 = sumV2;
+        double A12 = sumV3;
+        double A21 = sumV3;
+        double A22 = sumV4;
+        
+        double B1 = sumVD;
+        double B2 = sumV2D;
+        
+        double det = A11 * A22 - A12 * A21;
+        if (Math.abs(det) < 1e-9) return new double[]{0, 0};
+        
+        double b = (B1 * A22 - B2 * A12) / det;  // linear term
+        double a = (A11 * B2 - A21 * B1) / det;  // quadratic term
+        
+        return new double[]{b, a};
     }
     
     private enum State {
@@ -181,12 +295,24 @@ public class PredictiveBrakingTuner extends OpMode {
         Pose pose;
         double velocity;
         double voltageApplied;
-        double powerApplied;
+        double velocityMagnitude;
         
-        BrakeRecord(double timeMs, Pose pose, double velocity) {
+        BrakeRecord(double timeMs, Pose pose, double velocity, double voltageApplied, double velocityMagnitude) {
             this.timeMs = timeMs;
             this.pose = pose;
             this.velocity = velocity;
+            this.voltageApplied = voltageApplied;
+            this.velocityMagnitude = velocityMagnitude;
+        }
+        
+        @SuppressLint("DefaultLocale")
+        @NonNull
+        public String toString() {
+            return String.format("t=%.0f ms, x=%.2f, y=%.2f, θ=%.2f, vel=%.2f, velMag=%" +
+                                     ".2f " +
+                                     "voltageApplied=%.2f",
+                                 timeMs, pose.getX(), pose.getY(), pose.getHeading(),
+                                 velocity, velocityMagnitude, voltageApplied);
         }
     }
 }
