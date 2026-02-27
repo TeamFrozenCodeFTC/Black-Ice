@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import org.firstinspires.ftc.teamcode.blackice.FollowerConstants;
 import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.core.commands.AutoRoutine;
+import org.firstinspires.ftc.teamcode.blackice.core.commands.Command;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 
 @Autonomous
@@ -23,12 +24,13 @@ public class Curve extends OpMode {
     @Override
     public void init() {
         follower = FollowerConstants.createFollower(hardwareMap);
-        telemetry =  new MultipleTelemetry(telemetry, FtcDashboard.getInstance()
-            .getTelemetry());
+        //telemetry =  new MultipleTelemetry(telemetry, FtcDashboard.getInstance()
+          //  .getTelemetry());
         
-        follower.setTelemetry(telemetry);
+        //follower.setTelemetry(telemetry);
         // todo make it so null heading uses last heading
         // and make heading functions
+        
         autoRoutine = follower.autoBuilder(startingPose)
             .curveTo(new Pose(24, 48, 0), new Pose(48, 0, 0))
             .untilAllFinish(() -> false)
@@ -45,5 +47,8 @@ public class Curve extends OpMode {
         follower.update();
         
         autoRoutine.run();
+        
+        telemetry.addData("deltaTime", follower.getDeltaTime());
+        telemetry.update();
     }
 }

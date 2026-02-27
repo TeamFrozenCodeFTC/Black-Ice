@@ -31,8 +31,7 @@ public class PerpendicularLines extends OpMode {
         autoRoutine = follower.autoBuilder(startingPose)
             .lineTo(targetPose)
             .lineTo(new Pose(48, 24,0))
-            //.stop()
-            .until((f, p) -> false)
+            //.addCommand()
             .build();
     }
     

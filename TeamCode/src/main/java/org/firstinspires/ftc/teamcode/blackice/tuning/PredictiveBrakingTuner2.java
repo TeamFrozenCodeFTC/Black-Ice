@@ -12,6 +12,7 @@ import org.firstinspires.ftc.teamcode.blackice.FollowerConstants;
 import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
+import org.firstinspires.ftc.teamcode.utils.Regression;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,14 +30,14 @@ import java.util.List;
  * @version 1.0, 12/26/2025
  */
 @Autonomous
-public class PredictiveBrakingTuner extends OpMode {
+public class PredictiveBrakingTuner2 extends OpMode {
     private static final double[] TEST_POWERS = biasedGradient(30, 1.0, 0.2, 2);
     
     private static double[] biasedGradient(
         int count,
         double max,
         double min,
-        double bias // >1 = more high values (try 2–3)
+        double bias
     ) {
         if (count < 2) return new double[]{max};
         
@@ -45,7 +46,6 @@ public class PredictiveBrakingTuner extends OpMode {
         for (int i = 0; i < count; i++) {
             double t = (double) i / (count - 1);
             
-            // Ease-out curve (clusters near max)
             double curved = 1 - Math.pow(t, bias);
             
             values[i] = min + curved * (max - min);
@@ -90,7 +90,7 @@ public class PredictiveBrakingTuner extends OpMode {
     }
 
     public double getForwardVelocity() {
-        return follower.getVelocity().dot(new Vector(direction, follower.getHeading()));
+        return follower.getVelocity().dot(new Vector(getDirection(), follower.getHeading()));
     }
     
     public double getVelocityMagnitude() {
@@ -99,9 +99,29 @@ public class PredictiveBrakingTuner extends OpMode {
     
     private static final Vector FORWARD = new Vector(1, 0);
     
-    int direction = 1; // 1 for forward, -1 for backward
+    private int getDirection() {
+        return (iteration % 2 == 0) ? 1 : -1;
+    }
     
-    boolean done = false;
+    private void startMovement(int direction, double power) {
+        follower.drivetrain.followVector(FORWARD.times(power * direction), 0);
+        timer.reset();
+    }
+    
+    private void startBraking(int direction) {
+        follower.drivetrain.followVector(
+            FORWARD.times(-follower.positionalController.maximumBrakingPower * direction), 0);
+        timer.reset();
+    }
+    
+    private BrakeRecord recordBrakeData(double velocity) {
+        double t = timer.milliseconds();
+        Pose currentPose = follower.getCurrentPose();
+        double velocityMagnitude = getVelocityMagnitude();
+        double voltage = follower.getVoltage();
+        double appliedVoltage = -voltage * Math.abs(TEST_POWERS[iteration]) * 0.2;
+        return new BrakeRecord(t, currentPose, velocity, appliedVoltage, velocityMagnitude);
+    }
     
     @SuppressLint("DefaultLocale")
     @Override
@@ -115,8 +135,6 @@ public class PredictiveBrakingTuner extends OpMode {
             return;
         }
         
-        direction = (iteration % 2 == 0) ? 1 : -1;
-        
         switch (state) {
             case START_MOVE: {
                 if (iteration >= TEST_POWERS.length) {
@@ -124,105 +142,39 @@ public class PredictiveBrakingTuner extends OpMode {
                     break;
                 }
                 
-                double currentPower = TEST_POWERS[iteration];
-                follower.drivetrain.followVector(FORWARD.times(currentPower * direction), 0); // heading correction?
-                
-                timer.reset();
+                startMovement(getDirection(), TEST_POWERS[iteration]);
                 state = State.WAIT_DRIVE_TIME;
                 break;
             }
             
             case WAIT_DRIVE_TIME: {
                 if (timer.milliseconds() >= DRIVE_TIME_MS) {
-                    timer.reset();
-                    
                     startPosition = follower.getPosition();
                     measuredVelocity = getForwardVelocity();
                     
-                    double t = timer.milliseconds();
-                    Pose currentPose = follower.getCurrentPose();
-                    double velocityMagnitude = getVelocityMagnitude();
-                    double voltage = follower.getVoltage();
-                    double appliedVoltage = -voltage * Math.abs(TEST_POWERS[iteration]) * 0.2;
-                    
-                    brakeData.add(new BrakeRecord(t, currentPose, measuredVelocity,
-                                                  appliedVoltage, velocityMagnitude));
-                    follower.drivetrain.followVector(
-                        FORWARD.times(-follower.positionalController.maximumBrakingPower * direction), 0); // or maybe field relative braking?
-                    
+                    brakeData.add(recordBrakeData(measuredVelocity));
+                    startBraking(getDirection());
                     state = State.WAIT_BRAKE_TIME;
                 }
                 break;
             }
             
-            // correct heading while braking?
-//            case APPLY_BRAKE: {
-//                follower.drivetrain.followVector(
-//                    FORWARD.times(-follower.positionalController.maximumBrakingPower * direction), 0); // or maybe field relative braking?
-//
-//                timer.reset();
-//                state = State.WAIT_BRAKE_TIME;
-//                break;
-//            }
-            
             case WAIT_BRAKE_TIME: {
-                double t = timer.milliseconds();
-                Pose currentPose = follower.getCurrentPose();
                 double currentVelocity = getForwardVelocity();
-                double velocityMagnitude = getVelocityMagnitude();
-                double voltage = follower.getVoltage();
-                double appliedVoltage = -voltage * Math.abs(TEST_POWERS[iteration]) * 0.2;
-                
-                brakeData.add(new BrakeRecord(t, currentPose, currentVelocity,
-                                              appliedVoltage, velocityMagnitude));
+                brakeData.add(recordBrakeData(currentVelocity));
                 
                 if (currentVelocity <= 0) {
-                    Vector endPosition = follower.getPosition();
-                    double brakingDistance = endPosition.minus(startPosition).computeMagnitude();
-                    
-                    velocityToBrakingDistance.add(
-                        new double[]{measuredVelocity, brakingDistance});
-                    
-                    follower.telemetry.addData("Test " + iteration,
-                                               String.format("v=%.3f  d=%.3f", measuredVelocity,
-                                                             brakingDistance));
-                    follower.telemetry.update();
-                    
-                    iteration++;
-                    
-                    if (iteration >= TEST_POWERS.length) {
-                        state = State.DONE;
-                        break;
-                    }
-                    
-                    direction = (iteration % 2 == 0) ? 1 : -1;
-                    double currentPower = TEST_POWERS[iteration];
-                    follower.drivetrain.followVector(FORWARD.times(currentPower * direction), 0); // heading correction?
-                    
-                    timer.reset();
-                    state = State.WAIT_DRIVE_TIME;
-                    break;
+                    finishIteration();
                 }
                 break;
             }
             
             case DONE: {
-                if (done) {
-                    return;
-                }
-                
-                done = true;
-                
                 follower.drivetrain.zeroPower();
                 follower.drivetrain.zeroPowerBrakeMode();
                 
-                double[] coefficients = quadraticFit(velocityToBrakingDistance);
+                double[] coefficients = Regression.quadraticFit(velocityToBrakingDistance);
                 
-                follower.telemetry.addLine("Tuning Complete");
-                follower.telemetry.addLine("Braking Profile:");
-                follower.telemetry.addData("kQuadratic", coefficients[1]);
-                follower.telemetry.addData("kLinear", coefficients[0]);
-                follower.telemetry.update();
                 follower.telemetry.addLine("Tuning Complete");
                 follower.telemetry.addLine("Braking Profile:");
                 follower.telemetry.addData("kQuadraticFriction", coefficients[1]);
@@ -232,67 +184,36 @@ public class PredictiveBrakingTuner extends OpMode {
                     follower.telemetry.addLine(record.toString());
                 }
                 follower.telemetry.update();
+                requestOpModeStop();
                 break;
             }
         }
     }
-
-    private double[] quadraticFit(List<double[]> velocityToBrakingDistance) {
-        // Least-squares fit for d = a*v^2 + b*v
-        double sumV = 0;
-        double sumV2 = 0;
-        double sumV3 = 0;
-        double sumV4 = 0;
-        
-        double sumD = 0;
-        double sumVD = 0;
-        double sumV2D = 0;
-        
-        int n = velocityToBrakingDistance.size();
-        if (n == 0) return new double[]{0, 0};
-        
-        for (double[] entry : velocityToBrakingDistance) {
-            double v = entry[0];
-            double d = entry[1];
-            
-            double v2 = v * v;
-            
-            sumV += v;
-            sumV2 += v2;
-            sumV3 += v2 * v;
-            sumV4 += v2 * v2;
-            
-            sumD += d;
-            sumVD += v * d;
-            sumV2D += v2 * d;
-        }
-        
-        // Solve normal equations:
-        // [ Σv^2   Σv^3 ] [ b ] = [ Σv*d  ]
-        // [ Σv^3   Σv^4 ] [ a ]   [ Σv^2*d ]
-        double A11 = sumV2;
-        double A12 = sumV3;
-        double A21 = sumV3;
-        double A22 = sumV4;
-        
-        double B1 = sumVD;
-        double B2 = sumV2D;
-        
-        double det = A11 * A22 - A12 * A21;
-        if (Math.abs(det) < 1e-9) return new double[]{0, 0};
-        
-        double b = (B1 * A22 - B2 * A12) / det;  // linear term
-        double a = (A11 * B2 - A21 * B1) / det;  // quadratic term
-        
-        return new double[]{b, a};
-    }
     
+    private void finishIteration() {
+        Vector endPosition = follower.getPosition();
+        double brakingDistance = endPosition.minus(startPosition).computeMagnitude();
+        
+        velocityToBrakingDistance.add(new double[]{measuredVelocity, brakingDistance});
+        
+        follower.telemetry.addData("Test " + iteration,
+                                   String.format("v=%.3f  d=%.3f", measuredVelocity, brakingDistance));
+        follower.telemetry.update();
+        
+        iteration++;
+        
+        if (iteration >= TEST_POWERS.length) {
+            state = State.DONE;
+        } else {
+            startMovement(getDirection(), TEST_POWERS[iteration]);
+            state = State.WAIT_DRIVE_TIME;
+        }
+    }
+
     private enum State {
         START_MOVE,
         WAIT_DRIVE_TIME,
-        APPLY_BRAKE,
         WAIT_BRAKE_TIME,
-        RECORD,
         DONE
     }
     

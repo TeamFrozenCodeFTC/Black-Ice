@@ -43,8 +43,7 @@ public class LineGeometry implements PathGeometry {
         double t = Range.clip(startToPoint.dot(tangent) / length, 0, 1);
         Vector closestPoint = computePointAt(t);
         double distanceAlongPath = t * length;
-        return new PathPoint(closestPoint, tangent.getAngle(), 0, distanceAlongPath,
-                             length - distanceAlongPath, t, t);
+        return new PathPoint(closestPoint, tangent.getAngle(), 0, length - distanceAlongPath, t, t);
     }
 
     @Override

@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.blackice.tests;
+package org.firstinspires.ftc.teamcode.blackice.tests.looptimes;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -8,7 +8,7 @@ import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 
 @Autonomous
-public class HoldPose extends OpMode {
+public class HoldPoseLooptime extends OpMode {
     Follower follower;
     
     Pose startingPose = new Pose(0, 0, 0);
@@ -16,8 +16,6 @@ public class HoldPose extends OpMode {
     @Override
     public void init() {
         follower = FollowerConstants.createFollower(hardwareMap);
-        
-        follower.setTelemetry(telemetry);
     }
     
     @Override
@@ -26,6 +24,7 @@ public class HoldPose extends OpMode {
         
         follower.holdPose(startingPose);
         
-        follower.log();
+        telemetry.addData("deltaTime", follower.getDeltaTime());
+        telemetry.update();
     }
 }

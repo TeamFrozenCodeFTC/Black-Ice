@@ -7,7 +7,7 @@ import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.blackice.LoggingTelemetry;
+import org.firstinspires.ftc.teamcode.blackice.RobotLogTelemetry;
 import org.firstinspires.ftc.teamcode.blackice.core.commands.builder.AutoBuilder;
 import org.firstinspires.ftc.teamcode.blackice.core.controllers.PDController;
 import org.firstinspires.ftc.teamcode.blackice.core.controllers.PredictiveBrakingController;
@@ -36,7 +36,7 @@ public class Follower {
      */
     public final PredictiveBrakingController positionalController;
     
-    public final double estimatedPathTimeoutMultiplier = 1.3;
+    public final double estimatedPathTimeoutMultiplier = 1.8;
     public final double minimumPathTimeout = 0.3;
     
     /**
@@ -63,6 +63,8 @@ public class Follower {
     private Vector lastVelocity = new Vector(0, 0);
     private Vector acceleration = new Vector(0, 0);
     
+    private boolean debug = false;
+    
     public Follower(PDController headingController,
                     PredictiveBrakingController positionalController,
                     DrivetrainConfig drivetrain, LocalizerConfig localizer,
@@ -83,6 +85,7 @@ public class Follower {
             }
             return Math.max(9.0, Math.min(14.5, minV));
         };
+        this.telemetry = FtcDashboard.getInstance().getTelemetry();
     }
     
     public double getDeltaTime() {
@@ -94,10 +97,20 @@ public class Follower {
         drivetrain.zeroPower();
     }
     
+    public void setTelemetry(Telemetry telemetry, boolean includeRobotLog) {
+        this.telemetry =
+            new MultipleTelemetry(this.telemetry, telemetry);
+        
+        if (includeRobotLog) {
+            this.telemetry =
+                new MultipleTelemetry(this.telemetry,
+                                      new RobotLogTelemetry(
+                                          "BLACK-ICE"));
+        }
+    }
+    
     public void setTelemetry(Telemetry telemetry) {
-        this.telemetry = new LoggingTelemetry(
-            new MultipleTelemetry(FtcDashboard.getInstance().getTelemetry(), telemetry),
-            "BLACK-ICE");
+        setTelemetry(telemetry, true);
     }
     
     public AutoBuilder autoBuilder(Pose startingPose) {

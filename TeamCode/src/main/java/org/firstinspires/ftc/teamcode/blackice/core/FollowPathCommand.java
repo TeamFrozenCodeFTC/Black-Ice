@@ -6,7 +6,7 @@ import org.firstinspires.ftc.teamcode.blackice.core.geometry.PathPoint;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
 
-public class FollowPathCommand extends Command {
+public class FollowPathCommand implements Command {
     public final PathGeometry pathGeometry;
     final HeadingInterpolator headingInterpolator;
     final Follower follower;
@@ -102,6 +102,10 @@ public class FollowPathCommand extends Command {
                 .plus(tangent.times(tangentUsed));
         
         follower.followFieldVector(drivePower, headingPower);
+        
+        if (follower.telemetry == null) {
+            return;
+        }
         
         follower.telemetry.addData("holdPower",
                                    follower.computeHoldPower(pathGeometry.getEndPoint()));

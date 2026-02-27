@@ -11,6 +11,10 @@ public class Vector {
     }
     
     public static Vector fromPolar(double magnitude, double angle) {
+        if (magnitude < 0) {
+            magnitude = -magnitude;
+            angle += Math.PI;
+        }
         return new Vector(
             magnitude * Math.cos(angle),
             magnitude * Math.sin(angle)
