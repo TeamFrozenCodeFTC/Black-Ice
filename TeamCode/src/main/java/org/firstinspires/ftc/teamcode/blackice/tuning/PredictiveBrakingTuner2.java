@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 
 import androidx.annotation.NonNull;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -30,8 +31,11 @@ import java.util.List;
  * @version 1.0, 12/26/2025
  */
 @Autonomous
+@Config
 public class PredictiveBrakingTuner2 extends OpMode {
     private static final double[] TEST_POWERS = biasedGradient(30, 1.0, 0.2, 2);
+    
+    public static double brakingPower = 0.2;
     
     private static double[] biasedGradient(
         int count,
@@ -110,7 +114,7 @@ public class PredictiveBrakingTuner2 extends OpMode {
     
     private void startBraking(int direction) {
         follower.drivetrain.followVector(
-            FORWARD.times(-follower.positionalController.maximumBrakingPower * direction), 0);
+            FORWARD.times(-brakingPower * direction), 0);
         timer.reset();
     }
     
@@ -119,7 +123,7 @@ public class PredictiveBrakingTuner2 extends OpMode {
         Pose currentPose = follower.getCurrentPose();
         double velocityMagnitude = getVelocityMagnitude();
         double voltage = follower.getVoltage();
-        double appliedVoltage = -voltage * Math.abs(TEST_POWERS[iteration]) * 0.2;
+        double appliedVoltage = voltage * -brakingPower;
         return new BrakeRecord(t, currentPose, velocity, appliedVoltage, velocityMagnitude);
     }
     
@@ -149,11 +153,15 @@ public class PredictiveBrakingTuner2 extends OpMode {
             
             case WAIT_DRIVE_TIME: {
                 if (timer.milliseconds() >= DRIVE_TIME_MS) {
-                    startPosition = follower.getPosition();
-                    measuredVelocity = getForwardVelocity();
+                    timer.reset();
                     
+                    startPosition =
+                        follower.getPosition().plus(follower.getVelocity().times(follower.getDeltaTime()));
+                    measuredVelocity =
+                        getForwardVelocity();
+                     
                     brakeData.add(recordBrakeData(measuredVelocity));
-                    startBraking(getDirection());
+                    startBraking(getDirection()); // commands -0.2 voltage
                     state = State.WAIT_BRAKE_TIME;
                 }
                 break;

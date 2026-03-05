@@ -222,6 +222,10 @@ public class Follower {
         if (powerMag > maxPower) {
             holdPower = holdPower.times(maxPower / powerMag);
         }
+        telemetry.addData("power",
+                          holdPower.dot(((pose.getPosition().minus(getPosition()))).normalized()));
+        telemetry.addData("distance from target",
+                          pose.getPosition().minus(getPosition()).dot(new Vector(1,0)));
         
         double turnPower =
             Math.min(maxPower, computeHeadingCorrectionPower(pose.getHeading()));

@@ -81,7 +81,7 @@ public class AutoBuilder {
     
     private AutoBuilder addPath(PendingMovement path) {
         flushPending();
-        pendingCommand = (PendingCommand) path;
+        pendingCommand = path;
         pendingCommands.add(pendingCommand);
         lastEndPose = path.endPose;
         return this;
