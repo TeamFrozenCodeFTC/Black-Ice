@@ -51,13 +51,13 @@ public class PredictiveBrakingController {
      * relative to it's velocity).
      * Conceptually similar to a derivative damping term in a regular PID.
      */
-    public double kBraking;
+    public double kLinear;
     
     /**
      * Quadratic friction/slippage coefficient.
      * Models non-linear wheel slippage from friction.
      */
-    public double kFriction;
+    public double kQuadratic;
     
     /**
      * Proportional gain.
@@ -73,7 +73,7 @@ public class PredictiveBrakingController {
      * motor’s own momentum for braking.
      */
     public double maximumBrakingPower = 0.2;
-    
+
     /**
      * Constructs the controller.
      *
@@ -84,8 +84,8 @@ public class PredictiveBrakingController {
     public PredictiveBrakingController(double kP, double kLinearBraking,
                                        double kQuadraticFriction) {
         this.kP = kP;
-        this.kBraking = kLinearBraking;
-        this.kFriction = kQuadraticFriction;
+        this.kLinear = kLinearBraking;
+        this.kQuadratic = kQuadraticFriction;
     }
     
     /**
@@ -105,8 +105,13 @@ public class PredictiveBrakingController {
         double directionOfMotion = Math.signum(velocity);
         
         double predictedBrakingDisplacement =
-            directionOfMotion * velocity * velocity * kFriction + velocity * kBraking;
+            getPredictedBrakingDisplacement(velocity, directionOfMotion);
         
         return kP * (error - predictedBrakingDisplacement);
+    }
+    
+    public double getPredictedBrakingDisplacement(double velocity,
+                                                  double directionOfMotion) {
+        return directionOfMotion * velocity * velocity * kQuadratic + velocity * kLinear;
     }
 }

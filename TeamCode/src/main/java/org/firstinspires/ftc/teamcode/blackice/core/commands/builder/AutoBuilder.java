@@ -136,11 +136,16 @@ public class AutoBuilder {
         if (pendingCommand == null) return null;
         
         PendingCommand prev = pendingCommand;
-        pendingCommand = (currentPose1, follower) -> {
-            Command built = prev.build(currentPose1, follower);
+        
+        PendingCommand wrapped = (currentPose, follower) -> {
+            Command built = prev.build(currentPose, follower);
             return built.untilAllFinish(
-                () -> follower.isStoppedAt(pendingCommand.getEndPose(currentPose1)));
+                () -> follower.isStoppedAt(pendingCommand.getEndPose(currentPose)));
         };
+        
+        // Replace last command in list
+        int lastIndex = pendingCommands.size() - 1;
+        pendingCommands.set(lastIndex, wrapped);
         return this;
     }
     
@@ -160,6 +165,21 @@ public class AutoBuilder {
     
     public AutoBuilder withLinearHeadingInterpolation() {
         requirePath().setHeadingInterpolator(HeadingInterpolator::linear);
+        return this;
+    }
+    
+    public AutoBuilder withTangentHeading() {
+        requirePath().setHeadingInterpolator((prev, target) -> HeadingInterpolator.tangent);
+        return this;
+    }
+    
+    public AutoBuilder withReversedTangentHeading() {
+        requirePath().setHeadingInterpolator((prev, target) -> HeadingInterpolator.tangent.backwards());
+        return this;
+    }
+    
+    public AutoBuilder withConstantHeading(double heading) {
+        requirePath().setHeadingInterpolator((p, t) -> HeadingInterpolator.constant(heading));
         return this;
     }
     
@@ -183,14 +203,21 @@ public class AutoBuilder {
     }
     
     private PendingCommand wrapLastStepWith(
-        java.util.function.Function<Command, Command> wrapper) {
+        java.util.function.Function<Command, Command> wrapper)
+    {
         if (pendingCommand == null) return null;
         
         PendingCommand prev = pendingCommand;
-        return (currentPose, follower) -> {
+        
+        PendingCommand wrapped = (currentPose, follower) -> {
             Command built = prev.build(currentPose, follower);
             return wrapper.apply(built);
         };
+        
+        // Replace last command in list
+        int lastIndex = pendingCommands.size() - 1;
+        pendingCommands.set(lastIndex, wrapped);
+        
+        return wrapped;
     }
-    
 }

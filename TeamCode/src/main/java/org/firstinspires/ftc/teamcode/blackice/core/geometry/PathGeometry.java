@@ -19,4 +19,17 @@ public interface PathGeometry {
 
     PathGeometry reversed();
     PathGeometry mirrored();
+    
+    default double getDistanceRemaining(PathPoint closestPoint) {
+        double distanceToEnd;
+        if (closestPoint.distanceRemaining == 0) {
+            distanceToEnd =
+                getEndPoint()
+                    .minus(closestPoint.point)
+                    .dot(Vector.fromPolar(1, closestPoint.tangent));
+        } else {
+            distanceToEnd = closestPoint.distanceRemaining;
+        }
+        return distanceToEnd;
+    }
 }

@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.blackice.RobotLogTelemetry;
 import org.firstinspires.ftc.teamcode.blackice.core.commands.builder.AutoBuilder;
 import org.firstinspires.ftc.teamcode.blackice.core.controllers.PDController;
 import org.firstinspires.ftc.teamcode.blackice.core.controllers.PredictiveBrakingController;
+import org.firstinspires.ftc.teamcode.blackice.core.controllers.PredictiveBrakingController2;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.Drivetrain;
 import org.firstinspires.ftc.teamcode.blackice.drivetrain.DrivetrainConfig;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
@@ -36,6 +37,14 @@ public class Follower {
      */
     public final PredictiveBrakingController positionalController;
     
+//    public final PredictiveBrakingController positionalController =
+//        new PredictiveBrakingController(0.2, 0.0527, 0.001362, 0.00187);
+//    public final PredictiveBrakingController normalController =
+//        new PredictiveBrakingController(0.2, 0.0527, 0.001362, 0.00187);
+//
+//    public final PredictiveBrakingController initialBrakingDistance =
+//        new PredictiveBrakingController(0.2,0.0527,0.001362); // 0.00187
+    
     public final double estimatedPathTimeoutMultiplier = 1.8;
     public final double minimumPathTimeout = 0.3;
     
@@ -53,7 +62,6 @@ public class Follower {
     public PoseTolerance poseTolerance;
     public MotionTolerance motionTolerance;
     boolean isBraking = false;
-    Vector brakingVector;
     double lastTime = System.nanoTime();
     DoubleSupplier voltageSupplier;
     private double deltaTime;
@@ -62,6 +70,9 @@ public class Follower {
     private Double lockedHeading = null;
     private Vector lastVelocity = new Vector(0, 0);
     private Vector acceleration = new Vector(0, 0);
+    
+    double maximumBrakingPower = -0.3;
+    double brakingPower = -0.2;
     
     private boolean debug = false;
     
@@ -136,7 +147,6 @@ public class Follower {
     public void reset() {
         headingController.reset();
         isBraking = false;
-        brakingVector = null;
     }
     
     public void log() {
@@ -195,9 +205,9 @@ public class Follower {
         }
         double clampedPower;
         if (power < 0) {
-            clampedPower = Math.max(power, -0.2);
+            clampedPower = Math.max(power, -0.3);
         } else {
-            clampedPower = Math.min(power, 0.2);
+            clampedPower = Math.min(power, 0.3);
         }
         return clampedPower;
     }
@@ -222,10 +232,10 @@ public class Follower {
         if (powerMag > maxPower) {
             holdPower = holdPower.times(maxPower / powerMag);
         }
-        telemetry.addData("power",
-                          holdPower.dot(((pose.getPosition().minus(getPosition()))).normalized()));
-        telemetry.addData("distance from target",
-                          pose.getPosition().minus(getPosition()).dot(new Vector(1,0)));
+//        telemetry.addData("power",
+//                          holdPower.dot(((pose.getPosition().minus(getPosition()))).normalized()));
+//        telemetry.addData("distance from target",
+//                          pose.getPosition().minus(getPosition()).dot(new Vector(1,0)));
         
         double turnPower =
             Math.min(maxPower, computeHeadingCorrectionPower(pose.getHeading()));
@@ -267,13 +277,13 @@ public class Follower {
         deltaTime = calculateDeltaTime();
         localizer.update(deltaTime);
         
-        Vector currentVelocity = localizer.getVelocity();
+        //Vector currentVelocity = localizer.getVelocity();
         
-        if (deltaTime > 1e-6) {
-            acceleration = currentVelocity.minus(lastVelocity).times(1.0 / deltaTime);
-        }
-        
-        lastVelocity = currentVelocity;
+//        if (deltaTime > 1e-6) {
+//            acceleration = currentVelocity.minus(lastVelocity).times(1.0 / deltaTime);
+//        }
+//
+//        lastVelocity = currentVelocity;
     }
     
     public Vector getAcceleration() {
@@ -346,6 +356,7 @@ public class Follower {
         //        } else {
         //            drivetrain.zeroPower();
         //        }
+        drivetrain.zeroPowerBrakeMode();
         drivetrain.zeroPower();
     }
     

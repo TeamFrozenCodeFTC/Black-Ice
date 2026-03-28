@@ -41,7 +41,12 @@ public class FollowerConstants {
             //new PredictiveBrakingController(0.2, 0.0332, 0.0016),
 //            new PredictiveBrakingController(0.2, 0.0881, 0.00117),
 //            new PredictiveBrakingController(0.2, 0.051, 0.00156),
-            new PredictiveBrakingController(0.2, 0.13692, 0),
+//            new PredictiveBrakingController(0.2, 0.045, 0.0015),
+            new PredictiveBrakingController(0.3, 0.045, 0.0015),
+//            new PredictiveBrakingController(0.2, 0.13692, 0),
+//            new PredictiveBrakingController(0.1, 0.0005, 0.00187),
+            
+            // 0.0527, 0.001362
             drivetrainConfig,
             localizerConfig,
             hardwareMap,

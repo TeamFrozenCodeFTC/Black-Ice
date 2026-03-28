@@ -39,9 +39,9 @@ class PendingPath extends PendingMovement {
         Command cmd = new FollowPathCommand(pathGeometry, headingConstructor.create(
             startPose.getHeading(), endPose.getHeading()), follower, followingPower);
         
-        if (timeout != null) {
-            cmd = cmd.withTimeout(timeout);
-        }
+//        if (timeout != null) {
+//            cmd = cmd.withTimeout(timeout);
+//        }
         
         return cmd;
     }

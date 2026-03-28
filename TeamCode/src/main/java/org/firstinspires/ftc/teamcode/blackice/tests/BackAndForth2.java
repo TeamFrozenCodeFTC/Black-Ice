@@ -13,7 +13,7 @@ import org.firstinspires.ftc.teamcode.blackice.core.commands.AutoRoutine;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 
 @Autonomous
-public class PerpendicularLines extends OpMode {
+public class BackAndForth2 extends OpMode {
     Follower follower;
     
     Pose targetPose = new Pose(48, 0, 0);
@@ -28,8 +28,21 @@ public class PerpendicularLines extends OpMode {
         
         autoRoutine = follower.autoBuilder(startingPose)
             .lineTo(targetPose)
-            .lineTo(new Pose(48, 24,0))
-            .untilAllFinish(() -> false)
+            .stop()
+            .lineTo(startingPose)
+            .stop()
+            .lineTo(targetPose)
+            .stop()
+            .lineTo(startingPose)
+            .stop()
+            .lineTo(targetPose)
+            .stop()
+            .lineTo(startingPose)
+            .stop()
+            .lineTo(targetPose)
+            .stop()
+            .lineTo(startingPose)
+            .stop()
             .build();
     }
     

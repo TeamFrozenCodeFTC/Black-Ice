@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.blackice.core.commands;
 
+import androidx.annotation.NonNull;
+
 import org.firstinspires.ftc.teamcode.blackice.core.FollowPathCommand;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 
@@ -63,5 +65,19 @@ public class AutoRoutine {
     
     public int getIndex() {
         return index;
+    }
+    
+    @NonNull
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < routineSteps.size(); i++) {
+            if (i == index) {
+                sb.append("-> ");
+            } else {
+                sb.append("   ");
+            }
+            sb.append(routineSteps.get(i).getName()).append("\n");
+        }
+        return sb.toString();
     }
 }

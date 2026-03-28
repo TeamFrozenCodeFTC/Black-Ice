@@ -5,6 +5,10 @@ public interface Command {
     default void update() {}
     boolean isFinished();
     
+    default String getName() {
+        return "";
+    };
+    
     static Command singleAction(Runnable action) {
         return new Command() {
             @Override
@@ -15,6 +19,11 @@ public interface Command {
             @Override
             public boolean isFinished() {
                 return true;
+            }
+            
+            @Override
+            public String getName() {
+                return "singleAction";
             }
         };
     }
@@ -35,13 +44,18 @@ public interface Command {
             
             @Override
             public void update() {
-                if (!self.isFinished()) self.update();
-                if (!other.isFinished()) other.update();
+                self.update();
+                other.update();
             }
             
             @Override
             public boolean isFinished() {
                 return self.isFinished() && other.isFinished();
+            }
+            
+            @Override
+            public String getName() {
+                return self.getName() + "&" + other.getName();
             }
         };
     }
@@ -58,13 +72,18 @@ public interface Command {
             
             @Override
             public void update() {
-                if (!self.isFinished()) self.update();
-                if (!other.isFinished()) other.update();
+                self.update();
+                other.update();
             }
             
             @Override
             public boolean isFinished() {
                 return self.isFinished() || other.isFinished();
+            }
+            
+            @Override
+            public String getName() {
+                return self.getName() + "|" + other.getName();
             }
         };
     }
@@ -90,6 +109,11 @@ public interface Command {
             @Override
             public boolean isFinished() {
                 return now() - start >= seconds;
+            }
+            
+            @Override
+            public String getName() {
+                return "wait(" + seconds + "/" + (now() - start) + ")";
             }
         };
     }
