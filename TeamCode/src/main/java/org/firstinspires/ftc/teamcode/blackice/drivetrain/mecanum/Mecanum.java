@@ -50,6 +50,16 @@ class Mecanum implements Drivetrain {
         double upRight  = -v.getY() + v.getX();  // FL, BR
         double downLeft = -v.getY() - v.getX();  // BL, FR
         
+//        double translationMag = Math.max(Math.abs(upRight), Math.abs(downLeft));
+//        double total = translationMag + Math.abs(turnPower);
+//
+//        if (total > 1.0) {
+//            double inv = 1.0 / total;
+//            upRight  *= inv;
+//            downLeft *= inv;
+//            turnPower *= inv;
+//        }
+        
         double fl = upRight  - turnPower;
         double bl = downLeft + turnPower;
         double fr = downLeft - turnPower;
@@ -59,7 +69,7 @@ class Mecanum implements Drivetrain {
             Math.max(Math.abs(fl), Math.abs(bl)),
             Math.max(Math.abs(fr), Math.abs(br))
         );
-        
+
         if (max > 1.0) {
             double scale = 1.0 / max;
             fl *= scale;

@@ -4,6 +4,8 @@ import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
 
+import java.util.Objects;
+
 /**
  * Represents a linear Bezier curve (a straight line) between two points.
  * This is a special case of a Bezier curve with two control points which
@@ -18,6 +20,9 @@ public class LineGeometry implements PathGeometry {
     public LineGeometry(Vector start, Vector end) {
         this.startPoint = start;
         Vector displacement = end.minus(start);
+        if (Objects.equals(displacement, new Vector(0, 0))) {
+            throw new IllegalArgumentException("cannot create a line at the same point" + start);
+        }
         this.length = displacement.computeMagnitude();
         this.tangent = displacement.dividedBy(length);
         this.endPathPoint = new PathPoint(end, tangent.getAngle(), 0, length, 1, 1);

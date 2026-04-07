@@ -34,19 +34,8 @@ public class FollowerConstants {
 
     public static Follower createFollower(HardwareMap hardwareMap) {
         return new Follower(
-//            new PDController(2, 0.15),
             new PDController(1.5, 0.1),
-//            new PredictiveBrakingController(0.3, 0.0881, 0.00117),
-//            new PredictiveBrakingController(0.3, 0.0308, 0.0017),
-            //new PredictiveBrakingController(0.2, 0.0332, 0.0016),
-//            new PredictiveBrakingController(0.2, 0.0881, 0.00117),
-//            new PredictiveBrakingController(0.2, 0.051, 0.00156),
-//            new PredictiveBrakingController(0.2, 0.045, 0.0015),
             new PredictiveBrakingController(0.3, 0.045, 0.0015),
-//            new PredictiveBrakingController(0.2, 0.13692, 0),
-//            new PredictiveBrakingController(0.1, 0.0005, 0.00187),
-            
-            // 0.0527, 0.001362
             drivetrainConfig,
             localizerConfig,
             hardwareMap,
@@ -55,35 +44,3 @@ public class FollowerConstants {
         );
     }
 }
-
-
-//public class FollowerConstants {
-//    public static LocalizerConfig localizerConfig = new PinpointConfig()
-//        .name("odo")
-//        .podDirection(
-//            GoBildaPinpointDriver.EncoderDirection.FORWARD,
-//            GoBildaPinpointDriver.EncoderDirection.FORWARD)
-//        .podOffset(84, -168);
-//
-//    public static DrivetrainConfig drivetrainConfig = new MecanumConfig()
-//        .frontLeft("frontLeft", DcMotorSimple.Direction.REVERSE)
-//        .backLeft("backLeft", DcMotorSimple.Direction.FORWARD)
-//        .frontRight("frontRight", DcMotorSimple.Direction.REVERSE)
-//        .backRight("backRight", DcMotorSimple.Direction.FORWARD)
-//        .maxForwardSpeed(60)
-//        .maxStrafeSpeed(45);
-//
-//    public static Follower createFollower(HardwareMap hardwareMap) {
-//        return new Follower(
-//            //            new PDController(3, 0.15),
-//            new PDController(2, 0.15),
-//            //            new PredictiveBrakingController(0.3, 0.0881, 0.00117),
-//            new PredictiveBrakingController(0.2, 0.0881, 0.00117),
-//            drivetrainConfig,
-//            localizerConfig,
-//            hardwareMap,
-//            new PoseTolerance(0.5, 3),
-//            new MotionTolerance(0.25, 5)
-//        );
-//    }
-//}

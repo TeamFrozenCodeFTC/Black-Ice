@@ -133,14 +133,22 @@ public class AutoBuilder {
     }
     
     public AutoBuilder stop() {
-        if (pendingCommand == null) return null;
+        if (pendingCommand == null) return this;
         
         PendingCommand prev = pendingCommand;
         
-        PendingCommand wrapped = (currentPose, follower) -> {
-            Command built = prev.build(currentPose, follower);
-            return built.untilAllFinish(
-                () -> follower.isStoppedAt(pendingCommand.getEndPose(currentPose)));
+        PendingCommand wrapped = new PendingCommand() {
+            @Override
+            public Command build(Pose currentPose, Follower follower) {
+                Command built = prev.build(currentPose, follower);
+                return built.untilAllFinish(
+                    () -> follower.isStoppedAt(prev.getEndPose(currentPose)));
+            }
+            
+            @Override
+            public Pose getEndPose(Pose currentPose) {
+                return prev.getEndPose(currentPose);
+            }
         };
         
         // Replace last command in list
@@ -178,8 +186,8 @@ public class AutoBuilder {
         return this;
     }
     
-    public AutoBuilder withConstantHeading(double heading) {
-        requirePath().setHeadingInterpolator((p, t) -> HeadingInterpolator.constant(heading));
+    public AutoBuilder withConstantHeading() {
+        requirePath().setHeadingInterpolator((prev, target) -> HeadingInterpolator.constant(target));
         return this;
     }
     
@@ -209,9 +217,17 @@ public class AutoBuilder {
         
         PendingCommand prev = pendingCommand;
         
-        PendingCommand wrapped = (currentPose, follower) -> {
-            Command built = prev.build(currentPose, follower);
-            return wrapper.apply(built);
+        PendingCommand wrapped = new PendingCommand() {
+            @Override
+            public Command build(Pose currentPose, Follower follower) {
+                Command built = prev.build(currentPose, follower);
+                return wrapper.apply(built);
+            }
+            
+            @Override
+            public Pose getEndPose(Pose currentPose) {
+                return prev.getEndPose(currentPose);
+            }
         };
         
         // Replace last command in list

@@ -21,6 +21,8 @@ import org.firstinspires.ftc.teamcode.blackice.localizers.LocalizerConfig;
 import org.firstinspires.ftc.teamcode.blackice.utils.MotionTolerance;
 import org.firstinspires.ftc.teamcode.blackice.utils.PoseTolerance;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import java.util.function.DoubleSupplier;
 
 public class Follower {
@@ -70,6 +72,12 @@ public class Follower {
     private Double lockedHeading = null;
     private Vector lastVelocity = new Vector(0, 0);
     private Vector acceleration = new Vector(0, 0);
+    
+    /**
+     * Inches of margin tangent force can be applied.
+     * Lower increases path accuracy, higher increases path speed.
+     */
+    public double trackWidth = 2.5;
     
     double maximumBrakingPower = -0.3;
     double brakingPower = -0.2;
@@ -273,17 +281,46 @@ public class Follower {
         return deltaTime;
     }
     
-    public void update() {
-        deltaTime = calculateDeltaTime();
-        localizer.update(deltaTime);
-        
-        //Vector currentVelocity = localizer.getVelocity();
-        
+//    public void update() {
+//        deltaTime = calculateDeltaTime();
+//        localizer.update(deltaTime);
+//
+//        Vector currentVelocity = localizer.getVelocity();
+//
 //        if (deltaTime > 1e-6) {
 //            acceleration = currentVelocity.minus(lastVelocity).times(1.0 / deltaTime);
 //        }
 //
 //        lastVelocity = currentVelocity;
+//    }
+    
+    private Deque<Vector> accelHistory = new ArrayDeque<>();
+    private int windowSize = 8;
+    
+    public void update() {
+        deltaTime = calculateDeltaTime();
+        localizer.update(deltaTime);
+        
+        Vector currentVelocity = localizer.getVelocity();
+        
+        if (deltaTime > 1e-6) {
+            Vector instantAccel =
+                currentVelocity.minus(lastVelocity).times(1.0 / deltaTime);
+            
+            accelHistory.addLast(instantAccel);
+            if (accelHistory.size() > windowSize) {
+                accelHistory.removeFirst();
+            }
+            
+            Vector sum = new Vector(0, 0);
+            for (Vector a : accelHistory) {
+                sum = sum.plus(a);
+            }
+            
+            acceleration = sum.times(1.0 / accelHistory.size());
+        }
+        
+        lastVelocity = currentVelocity;
     }
     
     public Vector getAcceleration() {

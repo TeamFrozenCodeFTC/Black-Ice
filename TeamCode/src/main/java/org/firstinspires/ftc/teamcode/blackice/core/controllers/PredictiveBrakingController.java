@@ -102,16 +102,34 @@ public class PredictiveBrakingController {
      * @return          control output (e.g., motor power)
      */
     public double computeOutput(double error, double velocity) {
-        double directionOfMotion = Math.signum(velocity);
-        
-        double predictedBrakingDisplacement =
-            getPredictedBrakingDisplacement(velocity, directionOfMotion);
-        
-        return kP * (error - predictedBrakingDisplacement);
+        return kP * (error - getPredictedBrakingDisplacement(velocity));
     }
     
-    public double getPredictedBrakingDisplacement(double velocity,
-                                                  double directionOfMotion) {
-        return directionOfMotion * velocity * velocity * kQuadratic + velocity * kLinear;
+    public double getPredictedBrakingDisplacement(double velocity) {
+        return Math.abs(velocity) * velocity * kQuadratic + velocity * kLinear;
+    }
+    
+    /**
+     * Compute velocity needed to achieve a predicted braking displacement.
+     *
+     * @param displacement Predicted braking displacement (signed)
+     * @return velocity (signed)
+     */
+    public double getVelocityFromBrakingDisplacement(double displacement) {
+        if (displacement == 0) return 0;
+        
+        double sign = Math.signum(displacement);
+        double d = Math.abs(displacement);
+        
+        // Solve quadratic: kQuadratic * v^2 + kLinear * v - d = 0
+        double discriminant = kLinear * kLinear + 4 * kQuadratic * d;
+        if (discriminant < 0) {
+            // Should not happen, but protect against NaN
+            return 0;
+        }
+        
+        double v = (-kLinear + Math.sqrt(discriminant)) / (2 * kQuadratic);
+        
+        return v * sign; // restore original direction
     }
 }

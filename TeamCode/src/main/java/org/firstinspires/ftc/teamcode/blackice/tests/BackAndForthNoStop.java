@@ -1,19 +1,15 @@
 package org.firstinspires.ftc.teamcode.blackice.tests;
 
-
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 
 import org.firstinspires.ftc.teamcode.blackice.FollowerConstants;
-import org.firstinspires.ftc.teamcode.blackice.core.FollowPathCommand;
 import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.core.commands.AutoRoutine;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 
 @Autonomous
-public class BackAndForth2 extends OpMode {
+public class BackAndForthNoStop extends OpMode {
     Follower follower;
     
     Pose targetPose = new Pose(48+24, 0, 0);
@@ -32,21 +28,13 @@ public class BackAndForth2 extends OpMode {
         
         autoRoutine = follower.autoBuilder(startingPose)
             .lineTo(targetPose)
-            .stop()
             .lineTo(startingPose)
-            .stop()
             .lineTo(targetPose)
-            .stop()
             .lineTo(startingPose)
-            .stop()
             .lineTo(targetPose)
-            .stop()
             .lineTo(startingPose)
-            .stop()
             .lineTo(targetPose)
-            .stop()
             .lineTo(startingPose)
-            .stop()
             .build();
     }
     

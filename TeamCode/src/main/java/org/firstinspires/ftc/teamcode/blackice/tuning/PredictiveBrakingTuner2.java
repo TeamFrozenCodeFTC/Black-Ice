@@ -13,7 +13,7 @@ import org.firstinspires.ftc.teamcode.blackice.FollowerConstants;
 import org.firstinspires.ftc.teamcode.blackice.core.Follower;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Pose;
 import org.firstinspires.ftc.teamcode.blackice.geometry.Vector;
-import org.firstinspires.ftc.teamcode.utils.Regression;
+import org.firstinspires.ftc.teamcode.blackice.utils.Regression;
 
 import java.util.ArrayList;
 import java.util.List;

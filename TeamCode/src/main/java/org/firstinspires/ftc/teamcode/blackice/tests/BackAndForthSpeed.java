@@ -46,6 +46,7 @@ public class BackAndForthSpeed extends OpMode {
                 break;
         }
         
+        
         telemetry.addData("holdingPower",
                           follower.computeHoldPower(startingPose.getPosition()).computeMagnitude());
         telemetry.addData("position", follower.localizer.getPose());
